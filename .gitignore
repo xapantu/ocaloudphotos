@@ -1,0 +1,7 @@
+*.swp
+.*.s*
+.depend
+_client
+_server
+_deps
+local
