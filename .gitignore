@@ -1,7 +1,7 @@
 *.swp
 .*.s*
 .depend
-_client
-_server
-_deps
-local
+_build
+_run/log/ocaloudcore/*.log
+_run/ocaloudcore-cmd
+_run/data/ocaloudcore/ocsidb

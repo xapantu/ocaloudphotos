@@ -1,0 +1,4 @@
+<server/*>: package(eliom.server), package(lwt.ppx),thread
+<markdown*>: package(eliom.server),thread,package(lwt.ppx)
+<client/*>: package(eliom.client), package(lwt.ppx)
+true: quiet
