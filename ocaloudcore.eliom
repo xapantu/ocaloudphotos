@@ -14,7 +14,7 @@ open Files
 open Welcome
 
 module Config = Config
-module Data = Data(Config)
+module Data = Data.Volume_manager.VolumeManager(Config)
 
 
 (* Apps can register to read, write, use a filetype, and ask for apps
@@ -28,16 +28,18 @@ module Env = struct
 	module Data = Data
 end
 
-module Filess = Files(Env)
+module Files = Files(Env)
 
 module EnvBase = struct
 	include Env
-	module Files = Filess
+	module Files = Files
 end
 
 module Photos = Photos(EnvBase)
 
 module Welcome = Welcome(Env)
+
+let () = Data.load_volumes ()
 
 let main_service =
   Eliom_service.Http.service ~path:["main"] ~get_params:Eliom_parameter.unit ()
@@ -55,3 +57,5 @@ let () =
          ))
 
 let () = Mimes.register_public "main" main_service
+
+let _ = Bep.Main.start_syncing ()

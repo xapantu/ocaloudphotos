@@ -1,4 +1,8 @@
-<server/*>: package(eliom.server), package(lwt.ppx),thread
+<server/*>: package(eliom.server), package(react), package(lwt.ppx),thread
 <markdown*>: package(eliom.server),thread,package(lwt.ppx)
+<app_stub*>: package(eliom.server),thread,package(lwt.ppx)
 <client/*>: package(eliom.client), package(lwt.ppx)
 true: quiet
+<data/*>: for-pack(Data), package(react)
+<bep/*>: package(lwt.ppx),package(sqlite3),package(sha),package(inotify.lwt),package(ppx_bitstring.ext), package(bitstring),package(lwt.ssl),for-pack(Bep)
+<utils/*>:for-pack(Utils)

@@ -31,5 +31,6 @@ module Files(E:App_stub.ENV) : App_stub.FILES with type volume = E.Data.volume =
 		Hashtbl.find serv_volume n
 	
 	let () =
-		E.Data.notify_on_new_volume on_new_volume
+		React.E.map on_new_volume E.Data.new_volume_loaded; ()
+	
 end
