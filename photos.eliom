@@ -87,9 +87,9 @@ module Photos(E:App_stub.ENVBASE) = struct
 		| Unix.Unix_error(_) -> raise Album_does_not_exist
 
 	let main_service =
-	  Eliom_service.Http.service ~path:["p"] ~get_params:Eliom_parameter.(suffix @@ string "album") ()
+	  Eliom_service.App.service ~path:["p"] ~get_params:Eliom_parameter.(suffix @@ string "album") ()
 
-    let () = Eliom_registration.Html5.register
+    let () = E.Config.App.register
 		~service:main_service
 		(fun (album_id) () ->
 			try%lwt

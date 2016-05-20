@@ -1,7 +1,13 @@
 open React
 
 module VolumeManager (Config:App_stub.CONFIG) : App_stub.DATA = struct
+
+	module Devices = Devices.Devices
+
 	type volume = string
+
+	let volume_list_files n =
+		["file1"; "file2"; "file" ^ n]
 	
 	let volumes = Hashtbl.create 10
 	
@@ -28,6 +34,11 @@ module VolumeManager (Config:App_stub.CONFIG) : App_stub.DATA = struct
 		send_vol "california";
 		Hashtbl.add volumes "low" "low";
 		send_vol "low"
+	
+	let volume_sync_for_device v device =
+		let ev, send = E.create () in
+		send 0.55;
+		ev
 
 
 

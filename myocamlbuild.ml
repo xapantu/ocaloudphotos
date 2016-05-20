@@ -128,6 +128,7 @@ module MakeIntern (I : INTERNALS)(Eliom : ELIOM) = struct
            );
          if eliom then flag_infer ~file ~name ~path;
          Pathname.define_context dir [path];
+         Pathname.define_context path [dir];
       )
 
   let copy_rule_type =

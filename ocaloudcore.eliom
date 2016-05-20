@@ -13,7 +13,13 @@ open Photos
 open Files
 open Welcome
 
-module Config = Config
+module Ocaloudcore_app =
+  Eliom_registration.App (
+    struct
+      let application_name = "ocaloudcore"
+    end)
+
+module Config = Config(Ocaloudcore_app)
 module Data = Data.Volume_manager.VolumeManager(Config)
 
 
@@ -42,12 +48,15 @@ module Welcome = Welcome(Env)
 let () = Data.load_volumes ()
 
 let main_service =
-  Eliom_service.Http.service ~path:["main"] ~get_params:Eliom_parameter.unit ()
+  Eliom_service.App.service ~path:["main"] ~get_params:Eliom_parameter.unit ()
 
 let () =
-  Eliom_registration.Html5.register
+  Config.App.register
     ~service:main_service
     (fun () () ->
+				let ul = [%client
+	let _ = Js.Unsafe.eval_string "console.log(4141)"
+	in ()] in
        Lwt.return
          (Eliom_tools.F.html
             ~title:"reactivenodes"
@@ -58,4 +67,4 @@ let () =
 
 let () = Mimes.register_public "main" main_service
 
-let _ = Bep.Main.start_syncing ()
+(* let _ = Bep.Main.start_syncing ()*)

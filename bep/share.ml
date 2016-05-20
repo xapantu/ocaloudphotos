@@ -1,5 +1,7 @@
 open Lwt
 
+module Kvstore = Utils.Kvstore
+
 module StringSet = Set.Make(String)
 
 type share = (StringSet.t ref) * string * string * (string * string) Kvstore.kvstore (* id * path * hash * (file -> modified) *)
@@ -284,7 +286,7 @@ let load_from_disk share file_changed_callback =
 	return share
 
 let init_share name device =
-	(ref StringSet.empty, name, name, Kvstore.(new_store (string "hash" ** string "modified") (name ^ "_hash.sqlite")))
+	(ref StringSet.empty, name, "data2/" ^ name, Kvstore.(new_store (string "hash" ** string "modified") (name ^ "_hash.sqlite")))
 
 let to_xdr device (_, name, _, _)  =
 	(name, [device]), (0, [])

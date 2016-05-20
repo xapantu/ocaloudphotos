@@ -1,10 +1,25 @@
-open React
 
 module type CONFIG = sig
+	module App: Eliom_registration.ELIOM_APPL
+end
+
+type 'a signal = 'a Eliom_shared.React.S.t
+
+module type DEVICES = sig
+	type device
+	val list_devices: unit -> device list
+	val new_device : device React.event
+	val all_devices : (string list) React.signal
+	val name : device -> string
+	val new_device: string -> unit
 end
 
 module type DATA = sig
 	type volume
+
+	module Devices : DEVICES
+
+	open Devices
 
 	val all_volumes : unit -> volume list
 	val volumes_enabled_for : string -> volume list
@@ -15,12 +30,16 @@ module type DATA = sig
 
 	val load_volumes : unit -> unit
 
-	val new_volume_loaded : volume event
+	val new_volume_loaded : volume React.event
+
+	val volume_list_files : volume -> string list
+
+	val volume_sync_for_device : volume -> device -> float React.event
 end
 
 type unit_service = (unit, unit, Eliom_service.get_service_kind, Eliom_service.attached,
 	Eliom_service.service_kind, [ `WithoutSuffix ], unit, 
-	unit, Eliom_service.registrable, [ `Http ])
+	unit, Eliom_service.registrable, [ `Appl ])
 	Eliom_service.service 
 
 type path_service =
@@ -29,7 +48,7 @@ type path_service =
 	 Eliom_service.internal_service_kind, [ `WithSuffix ],
 	[ `One of string list ] Eliom_parameter.param_name, 
 	unit, Eliom_service.registrable,
-	[ `Http ])
+	[ `Appl ])
 	Eliom_service.service
 
 module type MIMES = sig
@@ -55,3 +74,4 @@ module type ENVBASE = sig
 	module Mimes : MIMES
 	module Files : FILES with type volume = Data.volume
 end
+
