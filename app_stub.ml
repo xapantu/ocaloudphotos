@@ -1,15 +1,14 @@
+open React
 
 module type CONFIG = sig
 	module App: Eliom_registration.ELIOM_APPL
 end
 
-type 'a signal = 'a Eliom_shared.React.S.t
-
 module type DEVICES = sig
 	type device
 	val list_devices: unit -> device list
-	val new_device : device React.event
-	val all_devices : (string list) React.signal
+	val new_device : device event
+	val all_devices : (string list) signal
 	val name : device -> string
 	val new_device: string -> unit
 end
@@ -22,17 +21,17 @@ module type DATA = sig
 	open Devices
 
 	val all_volumes : unit -> volume list
-	val volumes_enabled_for : string -> volume list
+	val volumes_enabled_for : string -> volume event
 	val volume_id : volume -> string
 	val public_volume : volume -> bool
 	val volume_path : volume -> string
 	val from_id : string -> volume
 
-	val load_volumes : unit -> unit
+	val load_volumes : unit -> unit Lwt.t
 
 	val new_volume_loaded : volume React.event
 
-	val volume_list_files : volume -> string list
+	val volume_list_files : volume -> string list signal
 
 	val volume_sync_for_device : volume -> device -> float React.event
 end

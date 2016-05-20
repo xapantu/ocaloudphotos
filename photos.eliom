@@ -6,8 +6,9 @@
 ]
 
 open Markdown_lexer
+open React
 
-module Photos(E:App_stub.ENVBASE) = struct
+module Photos(Env:App_stub.ENVBASE) = struct
 
 	type 'a image = {
 		filename:string;
@@ -20,7 +21,7 @@ module Photos(E:App_stub.ENVBASE) = struct
 		id: string;
 		path: string;
 		description: 'a Eliom_content.Html5.D.elt;
-		volume: E.Data.volume;
+		volume: Env.Data.volume;
 	}
 
 	let read_images_from_album album =
@@ -72,8 +73,8 @@ module Photos(E:App_stub.ENVBASE) = struct
 
 	let read_album_information album =
 		try%lwt
-			let volume = E.Data.from_id album in
-			let path = E.Data.volume_path volume in
+			let volume = Env.Data.from_id album in
+			let path = Env.Data.volume_path volume in
 			let index_file_data = Markdown.openfile (path ^ "/" ^ "index.md") in
 
 			return {
@@ -81,7 +82,7 @@ module Photos(E:App_stub.ENVBASE) = struct
 				id = album;
 				path = path;
 				description = Markdown.to_html index_file_data;
-				volume = E.Data.from_id album
+				volume = Env.Data.from_id album
 			}
 		with
 		| Unix.Unix_error(_) -> raise Album_does_not_exist
@@ -89,7 +90,7 @@ module Photos(E:App_stub.ENVBASE) = struct
 	let main_service =
 	  Eliom_service.App.service ~path:["p"] ~get_params:Eliom_parameter.(suffix @@ string "album") ()
 
-    let () = E.Config.App.register
+    let () = Env.Config.App.register
 		~service:main_service
 		(fun (album_id) () ->
 			try%lwt
@@ -97,7 +98,7 @@ module Photos(E:App_stub.ENVBASE) = struct
 				let%lwt images = read_images_from_album album in
 				let images = List.sort (fun i j -> String.compare i.filename j.filename) images in
 				let displayed_images = List.map (fun album_img ->
-					let img_uri = make_uri ~service:(E.Files.service_for_volume album.volume) (E.Files.download_path album.volume album_img.filename) in
+					let img_uri = make_uri ~service:(Env.Files.service_for_volume album.volume) (Env.Files.download_path album.volume album_img.filename) in
 
 					let html_img = img ~src:img_uri ~alt:album_img.alt () in
 					let html_descr = div [album_img.name] in
@@ -124,10 +125,10 @@ module Photos(E:App_stub.ENVBASE) = struct
 	
 	let register_service_for_album n =
 	  Eliom_service.preapply ~service:main_service n
-	  |> E.Mimes.register_public n
+	  |> Env.Mimes.register_public n
 
 	let _ =
-		E.Data.volumes_enabled_for "photos"
-		|> List.map E.Data.volume_id
-		|> List.map register_service_for_album
+		Env.Data.volumes_enabled_for "photos"
+		|> E.map Env.Data.volume_id
+		|> E.map register_service_for_album
 end

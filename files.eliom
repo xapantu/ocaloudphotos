@@ -20,18 +20,11 @@ module Files(E:App_stub.ENV) : App_stub.FILES with type volume = E.Data.volume =
 
 	let serv_volume = Hashtbl.create 10
 	
-	let main_service2 =
-	  Eliom_service.App.service ~path:["c"] ~get_params:Eliom_parameter.(suffix @@ string "volume") ()
-
-	let () = E.Config.App.register
-		~service:main_service2
-		(fun (volume_id) () ->
-			let open Html5.F in
-			E.Data.Devices.new_device volume_id;
-			Lwt.return (Eliom_tools.F.html ~title:"test" (body [])))
     
 	let main_service =
-	  Eliom_service.App.service ~path:["v"] ~get_params:Eliom_parameter.(suffix @@ string "volume") ()
+	  Eliom_service.App.service
+	  	~path: ["v"]
+		~get_params: Eliom_parameter.(suffix @@ string "volume") ()
 
 	let () = E.Config.App.register
 		~service:main_service
@@ -39,12 +32,21 @@ module Files(E:App_stub.ENV) : App_stub.FILES with type volume = E.Data.volume =
 			try%lwt
 				let volume = E.Data.from_id volume_id in
 				let open E.Data in
-				let ul_content =
+				let open Eliom_react.S in
+				let file_list =
 					volume_list_files volume
-					|> List.map (fun s -> Html5.F.li [Html5.F.pcdata s])
+					|> Down.of_react
 				in
-				let file_list = Html5.F.ul ul_content in
-
+				let file_list = [%client
+					React.S.map (fun l ->
+						l |> List.map (fun s ->
+							Html5.F.li [Html5.F.pcdata s]
+						)) ~%file_list
+					|> React.S.map (fun l ->
+						Html5.F.ul l)
+					|> Html5.R.node]
+				in
+				
 				let ev = Eliom_react.S.Down.of_react Devices.all_devices in
 				
 				let ul = [%client
@@ -59,7 +61,7 @@ module Files(E:App_stub.ENV) : App_stub.FILES with type volume = E.Data.volume =
 					 ~title:"files"
 					 ~css:[["css";"ocaloudphotos.css"]]
 					 (Html5.F.body 
-					 [file_list; Html5.C.node ul; Html5.F.pcdata "test"]
+					 [Html5.C.node file_list; Html5.C.node ul; Html5.F.pcdata "test"]
 					 ))
 			with
 			| Volume_not_found -> return

@@ -45,7 +45,7 @@ module Photos = Photos(EnvBase)
 
 module Welcome = Welcome(Env)
 
-let () = Data.load_volumes ()
+let _ = Data.load_volumes ()
 
 let main_service =
   Eliom_service.App.service ~path:["main"] ~get_params:Eliom_parameter.unit ()
@@ -54,9 +54,6 @@ let () =
   Config.App.register
     ~service:main_service
     (fun () () ->
-				let ul = [%client
-	let _ = Js.Unsafe.eval_string "console.log(4141)"
-	in ()] in
        Lwt.return
          (Eliom_tools.F.html
             ~title:"reactivenodes"
@@ -68,3 +65,7 @@ let () =
 let () = Mimes.register_public "main" main_service
 
 (* let _ = Bep.Main.start_syncing ()*)
+
+[%%client
+open Files
+]
