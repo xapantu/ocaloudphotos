@@ -136,7 +136,8 @@ module Files(E:App_stub.ENV) : App_stub.FILES with type volume = E.Data.volume =
           |> React.S.map (fun all_volumes ->
             all_volumes
             |> List.map (fun l ->
-              Html5.F.(li [span [pcdata l]]))
+              let service = Eliom_service.preapply ~%service l in
+              Html5.F.(li [a ~service [pcdata l] ()]))
             |> Widgets.F.list_view)
           |> Html5.R.node
           in

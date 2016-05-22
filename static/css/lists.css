@@ -3,14 +3,18 @@
 }
 .list-view > li > a, .list-view > li > span {
 	border-bottom: 1px solid #ccc;
-	padding: 0.4em;
+	padding: 0.4em 0.6em;
 	display:block;
 	text-decoration:none;
 	color:black;
 }
 
+.list-view > li:last-child > a, .list-view > li:last-child > span {
+	border: 0;
+}
+
 .list-view > li > a:hover, .list-view > li > span:hover {
-	transition:100ms ease-in;
+	transition:50ms ease-in;
 	background-color:#d3e3ef;
 	cursor:pointer;
 }

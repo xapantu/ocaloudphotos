@@ -82,15 +82,29 @@ module VolumeManager (Config:CONFIG) = struct
     in
     Lwt.return (send_vol v)
 
-  let photos_volumes, send_photos_volumes = E.create ()
-  let files_volumes, send_files_volumes = E.create ()
+  let photos_volumes, send_photos_volumes = S.create []
+  let files_volumes, send_files_volumes = S.create []
+
+  let on_new_photo_volume, new_photo_volume = E.create ()
+  let on_new_files_volume, new_files_volume = E.create ()
+
+  let () =
+    E.map (fun l ->
+      send_photos_volumes (l:: S.value photos_volumes))
+      on_new_photo_volume
+    |> Lwt_react.E.keep
+  and () =
+    E.map (fun l ->
+      send_files_volumes (l::S.value files_volumes))
+      on_new_files_volume
+    |> Lwt_react.E.keep
 
   let load_volumes () =
     let file_list, send_file_list = S.create [] in
     let c = {id = "california";
              file_list = file_list;
              send_file_list = send_file_list; }
-    in add_volume c; send_photos_volumes c;
+    in add_volume c; new_photo_volume c;
     let file_list, send_file_list = S.create [] in
     {id = "low";
      file_list = file_list;
@@ -106,6 +120,9 @@ module VolumeManager (Config:CONFIG) = struct
     match name with
     | "photos" -> photos_volumes
     | "files" -> files_volumes
+
+  let new_volume_enabled_for = function
+    | "photos" -> on_new_photo_volume
 
 
 end

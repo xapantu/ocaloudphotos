@@ -42,7 +42,7 @@ module MakeIntern (I : INTERNALS)(Eliom : ELIOM) = struct
       ]
     in
     let f tags =
-      flag tags (S [A "-ppxopt"; P ("eliom.ppx.client,-type " ^ type_inferred)])
+      flag tags (S [(*A "-ppxopt"; P ("eliom.ppx.client,-type " ^ type_inferred)*)])
     in
     List.iter f tags;
     flag ["ocaml"; "doc"; file_tag] (S [A "-ppopt"; A "-notype"])

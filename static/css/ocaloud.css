@@ -1,6 +1,10 @@
-@import "lists.css";
-@import "two-panes.css";
-@import "sidebar.css";
+/* Eliom does some weird things with the .css (probably concatenating them and compress them),
+ * so, the @import rule is quite strict, using @import list.css; does NOT work fine.
+ * Feel free to find a more reasonable explanation.*/
+@import url(../css/lists.css);
+@import url(../css/two-panes.css);
+@import url(../css/sidebar.css);
+@import url(../css/photos.css);
 
 * {
     font-family: Cantarell, sans-serif;

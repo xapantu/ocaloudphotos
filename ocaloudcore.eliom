@@ -69,4 +69,5 @@ let () = Mimes.register_public "main" main_service
 
 [%%client
 open Files
+open Photos
 ]
