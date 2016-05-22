@@ -1,0 +1,23 @@
+.full-page-photo img {
+    display: block;
+    clear:both;
+}
+.full-page-photo {
+    box-shadow:0px 0px 10px grey;
+	margin:auto;
+	margin-bottom:1em;
+	background-color:white;
+	border-radius:5px;
+}
+
+.full-page-photo > div {
+    display:block;
+    text-align:center;
+    clear:both;
+    margin:0;
+}
+
+.full-page-photo > div p {
+	padding:0.4em;
+	margin:0;
+}

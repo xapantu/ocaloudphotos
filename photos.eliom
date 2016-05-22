@@ -84,6 +84,23 @@ module Photos(Env:App_stub.ENVBASE) = struct
   let main_service =
     Eliom_service.App.service ~path:["p"] ~get_params:Eliom_parameter.(suffix @@ string "album") ()
 
+
+  let create_display_view files_service images_list =
+    [%client
+      let open Html5.F in
+      ~%images_list (* every image to display *)
+      |> React.S.map (List.map (fun album_img -> (* convert them to html elements *)
+        let img_uri = make_uri ~service:~%files_service album_img.download_path in
+
+        let html_img = img ~src:img_uri ~alt:album_img.alt () in
+        let html_descr = div [Markdown.to_html album_img.name] in
+        div [Raw.a ~a:[a_href img_uri] [html_img]; html_descr] ~a:[a_class ["full-page-photo"]]
+      ))
+      |> React.S.map div (* pack everyone in a div *)
+      |> Html5.R.node (* transform the signal into a proper html node *)
+    ]
+    |> Html5.C.node
+
   let () = Env.Config.App.register
       ~service:main_service
       (fun (album_id) () ->
@@ -91,22 +108,7 @@ module Photos(Env:App_stub.ENVBASE) = struct
            let album = album_from_id album_id in
            let files_service = Env.Files.service_for_volume album.volume in
            let images_list = Eliom_react.S.Down.of_react album.image_list in
-           let image_grid_view =
-             [%client
-               let open Html5.F in
-               ~%images_list (* every image to display *)
-               |> React.S.map (List.map (fun album_img -> (* convert them to html elements *)
-                 let img_uri = make_uri ~service:~%files_service album_img.download_path in
-
-                 let html_img = img ~src:img_uri ~alt:album_img.alt () in
-                 let html_descr = div [Markdown.to_html album_img.name] in
-                 div [Raw.a ~a:[a_href img_uri] [html_img]; html_descr] ~a:[a_class ["full-page-photo"]]
-               ))
-               |> React.S.map div (* pack everyone in a div *)
-               |> Html5.R.node (* transform the signal into a proper html node *)
-             ]
-             |> Html5.C.node
-           in
+           let image_grid_view = create_display_view files_service images_list in
            Lwt.return (Env.F.main_box_sidebar [album.description; image_grid_view])
          with
          | Album_does_not_exist ->
