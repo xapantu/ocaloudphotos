@@ -32,6 +32,7 @@ module Env = struct
 	module Mimes = Mimes
 	module Config = Config
 	module Data = Data
+    module F = Widgets.S(Mimes)
 end
 
 module Files = Files(Env)

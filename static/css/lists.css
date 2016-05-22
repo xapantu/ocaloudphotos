@@ -1,0 +1,22 @@
+.list-view > li {
+	list-style-type: none;
+}
+.list-view > li > a, .list-view > li > span {
+	border-bottom: 1px solid #ccc;
+	padding: 0.4em;
+	display:block;
+	text-decoration:none;
+	color:black;
+}
+
+.list-view > li > a:hover, .list-view > li > span:hover {
+	transition:100ms ease-in;
+	background-color:#d3e3ef;
+	cursor:pointer;
+}
+
+ul.list-view {
+	padding: 0;
+	background-color:white;
+	margin:0;
+}

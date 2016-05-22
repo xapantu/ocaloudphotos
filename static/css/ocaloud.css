@@ -1,0 +1,20 @@
+@import "lists.css";
+@import "two-panes.css";
+@import "sidebar.css";
+
+* {
+    font-family: Cantarell, sans-serif;
+}
+
+body {
+	background-color: #e3f3ff;
+}
+
+.main-wrapper {
+	position:absolute;
+	top:0;
+	bottom:0;
+	left:200px;
+	right:0;
+	overflow-y:scroll;
+}

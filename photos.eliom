@@ -73,7 +73,7 @@ module Photos(Env:App_stub.ENVBASE) = struct
 
 	let read_album_information album =
 		try%lwt
-			let volume = Env.Data.from_id album in
+			let volume = Env.Data.volume_from_id album in
 			let path = Env.Data.volume_path volume in
 			let index_file_data = Markdown.openfile (path ^ "/" ^ "index.md") in
 
@@ -82,7 +82,7 @@ module Photos(Env:App_stub.ENVBASE) = struct
 				id = album;
 				path = path;
 				description = Markdown.to_html index_file_data;
-				volume = Env.Data.from_id album
+				volume = volume
 			}
 		with
 		| Unix.Unix_error(_) -> raise Album_does_not_exist

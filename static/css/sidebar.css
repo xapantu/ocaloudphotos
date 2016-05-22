@@ -1,0 +1,15 @@
+.sidebar {
+	width: 200px;
+	position:absolute;
+	top:0;
+	bottom:0;
+	left:0;
+	background-color:#31398f;
+	padding: 0.2em 0em;
+	box-sizing:border-box;
+}
+.sidebar h1 {
+font-size:1.1em;
+margin:0.3em;
+color:white;
+}
