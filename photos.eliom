@@ -3,6 +3,7 @@
     open Eliom_content
     open Html5.D
     open Lwt
+
     type image = {
         filename:string;
         name: Markdown_ast.file;
@@ -13,6 +14,7 @@
 
 open Markdown_lexer
 open React
+open Str_utils
   
 
 module Photos(Env:App_stub.ENVBASE) = struct
@@ -25,6 +27,8 @@ module Photos(Env:App_stub.ENVBASE) = struct
     volume: Env.Data.volume;
     image_list: image list React.signal;
   }
+  
+  exception Album_does_not_exist
 
   let albums = Hashtbl.create 10
 
@@ -33,58 +37,38 @@ module Photos(Env:App_stub.ENVBASE) = struct
   let add_album = Hashtbl.add albums
 
   
-  exception Album_does_not_exist
-
-  let string_startswith a b =
-    let n = String.length b in
-    String.length a >= n && String.sub a 0 n = b
-
-  let string_endswith a b = 
-    let n = String.length b in
-    let na = String.length a in
-    String.length a >= n && String.sub a (na-n) n = b
-
-  let string_endswiths lb a =
-    List.fold_left (||) false @@ List.map (string_endswith a) lb
-
-  let contains s1 s2 =
-    let re = Str.regexp_string s2
-    in
-    try let _ = (Str.search_forward re s1 0) in true
-    with Not_found -> false
-
-  let read_images_from_album album =
-    let extensions = [".jpg";".JPG";".png";".PNG";".jpeg";".JPEG"] in
+  let load_images_for_album album =
     let open React.S in
+    
+    let extensions = [".jpg";".JPG";".png";".PNG";".jpeg";".JPEG"] in
     let volume = Env.Data.volume_from_id album in
     let album_path = Env.Data.volume_path volume in
-    let photo_files =
-      Env.Data.volume_list_files volume
-      |> map (List.filter (fun f ->
-        string_endswiths extensions Shared.(f.name)))
-      |> map (List.map @@ fun f->
-          let caption_path = album_path ^ "/.captions/" ^ Shared.(f.name) ^ ".md" in
-          let name =
-            try
-              Markdown.openfile caption_path
-            with | Unix.Unix_error(_) -> Markdown.empty
-          in
-        { filename = album_path ^ "/" ^ f.name;
-          name = name;
-          alt = "";
-          download_path = Env.Files.download_path volume f.name;
-        }
-      )
-    in photo_files
 
-  let read_album_information album =
+    Env.Data.volume_list_files volume
+    |> map (List.filter (fun f ->
+      string_endswiths extensions Shared.(f.name)))
+    |> map (List.map @@ fun f->
+            let caption_path = album_path ^ "/.captions/" ^ Shared.(f.name) ^ ".md" in
+            let name =
+              try
+                Markdown.openfile caption_path
+              with | Unix.Unix_error(_) -> Markdown.empty
+            in
+            { filename = album_path ^ "/" ^ f.name;
+              name = name;
+              alt = "";
+              download_path = Env.Files.download_path volume f.name;
+            }
+           )
+
+  let album_load_from_id album =
     try
       let volume = Env.Data.volume_from_id album in
       let path = Env.Data.volume_path volume in
       let index_file_data = Markdown.openfile (path ^ "/" ^ "index.md") in
 
       let image_list = 
-        read_images_from_album album (* all images of the album *)
+        load_images_for_album album (* all images of the album *)
         |> React.S.map (List.sort (fun i j -> String.compare i.filename j.filename)) (* sorted images *)
       in
       { name = album;
@@ -125,17 +109,15 @@ module Photos(Env:App_stub.ENVBASE) = struct
            in
            Lwt.return (Env.F.main_box_sidebar [album.description; image_grid_view])
          with
-         | Album_does_not_exist -> return
-                                     (Eliom_tools.F.html
-                                        ~title:"ocaloudphotos"
-                                        ~css:[["css";"ocaloudphotos.css"]]
-                                        Html5.F.(body [
-                                          p [pcdata "This album does not seem to exist. Please make sure the directory exists and has an index.md file."];
-                                        ]))
+         | Album_does_not_exist ->
+           Lwt.return (Env.F.main_box_sidebar
+                     Html5.F.(
+                       [p [pcdata "This album does not seem to exist. Please make sure the directory exists and has an index.md file."]]
+                     ))
       )
 
   let register_service_for_album album_id =
-    let album = read_album_information album_id in
+    let album = album_load_from_id album_id in
     let () = add_album album_id album in
     Eliom_service.preapply ~service:main_service album.id
     |> Env.Mimes.register_public album_id
