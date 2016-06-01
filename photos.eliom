@@ -101,7 +101,19 @@ module Photos(Env:App_stub.ENVBASE) = struct
     ]
     |> Html5.C.node
 
-  let () = Env.Config.App.register
+  let () =
+    let resize_client_on_load () =
+      [%client
+        let resize () =
+          Js.Unsafe.eval_string "console.log(42)"
+        in
+        let _ = Lwt_js_events.onresizes (fun _ _ -> resize (); Lwt.return ()) in
+        let%lwt _  = Lwt_js_events.domContentLoaded () in
+        let _ = resize () in
+        Lwt.return ()
+      ]
+    in
+    Env.Config.App.register
       ~service:main_service
       (fun (album_id) () ->
          try%lwt
@@ -109,6 +121,7 @@ module Photos(Env:App_stub.ENVBASE) = struct
            let files_service = Env.Files.service_for_volume album.volume in
            let images_list = Eliom_react.S.Down.of_react album.image_list in
            let image_grid_view = create_display_view files_service images_list in
+           let _ = resize_client_on_load () in
            Lwt.return (Env.F.main_box_sidebar [album.description; image_grid_view])
          with
          | Album_does_not_exist ->
