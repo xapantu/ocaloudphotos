@@ -7,6 +7,7 @@ end
 module VolumeManager (Config:CONFIG) = struct
 
   module Devices = Devices.Devices
+  module Objects = Objects.Object_manager
 
   exception Volume_not_found of string
 

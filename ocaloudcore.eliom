@@ -12,12 +12,13 @@ open User
 open Photos
 open Files
 open Welcome
+open Irc
 
 module Ocaloudcore_app =
   Eliom_registration.App (
-    struct
-      let application_name = "ocaloudcore"
-    end)
+  struct
+    let application_name = "ocaloudcore"
+  end)
 
 module Config = Config(Ocaloudcore_app)
 module Data = Data.Volume_manager.VolumeManager(Config)
@@ -29,20 +30,21 @@ module Mimes = Mimes(Config)
 module User = User(Data)
 
 module Env = struct
-	module Mimes = Mimes
-	module Config = Config
-	module Data = Data
-    module F = Widgets.S(Mimes)
+  module Mimes = Mimes
+  module Config = Config
+  module Data = Data
+  module F = Widgets.S(Mimes)
 end
 
 module Files = Files(Env)
 
 module EnvBase = struct
-	include Env
-	module Files = Files
+  include Env
+  module Files = Files
 end
 
 module Photos = Photos(EnvBase)
+module Irc  = IrcApp(EnvBase)
 
 module Welcome = Welcome(Env)
 
@@ -55,19 +57,18 @@ let () =
   Config.App.register
     ~service:main_service
     (fun () () ->
-       Lwt.return
-         (Eliom_tools.F.html
-            ~title:"reactivenodes"
-            ~css:[["css"; "reactivenodes.css"]]
-            (body [F.p [pcdata "ocaloud v1"];
-                  ])
-         ))
+           Lwt.return
+           (Eliom_tools.F.html
+              ~title:"reactivenodes"
+              ~css:[["css"; "reactivenodes.css"]]
+              (body [p [pcdata "ocaloud v1"]])
+           ))
 
 let () = Mimes.register_public "main" main_service
 
 (* let _ = Bep.Main.start_syncing ()*)
-
 [%%client
-open Files
-open Photos
+    open Files
+    open Photos
+    open Irc
 ]

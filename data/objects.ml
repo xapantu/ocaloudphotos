@@ -1,16 +1,5 @@
 open React
 
-module type OBJ_MANAGER = sig
-  (* first one is the concrete type, second one the internal one *)
-  type _ object_type
-  type _ object_data
-  val save_object: 'a object_type -> 'a -> 'a object_data Lwt.t
-  val link_to_parent: 'a object_data -> 'b object_data -> unit Lwt.t
-  val get_object_of_type: 'a object_type -> 'a object_data list signal
-  val object_is_outdated: 'a object_data -> bool
-  val object_get_all_children: 'c object_data -> 'a object_type -> 'a object_data list signal
-  val get: 'a object_type -> 'a object_data -> 'a
-end
 
 module Object_manager = struct
 
@@ -22,6 +11,8 @@ module Object_manager = struct
   exception Not_implemented
 
   let value_store = Ocsipersist.open_store "object-manager"
+
+  let all_signals = Hashtbl.create 50
 
   let fresh_id () =
     let%lwt myid = Ocsipersist.make_persistent value_store "ids" 1 in
@@ -35,29 +26,43 @@ module Object_manager = struct
   let get (_, dec, enc) (b, _) =
     Protobuf.Decoder.decode_exn dec b
 
+  let get_signal name =
+    try
+      Lwt.return @@ fst @@ Hashtbl.find all_signals name
+    with
+    | Not_found ->
+        let table = Ocsipersist.open_table name in
+        let signal, signal_setter = S.create [] in
+        let _ = 
+          let%lwt all_objects = Ocsipersist.fold_step (fun n obj q ->
+          Lwt.return (obj :: q)) table [] in
+          Lwt.return (signal_setter all_objects)
+        in
+        (Hashtbl.add all_signals name (signal, signal_setter);
+        Lwt.return signal)
+
+  let get_signal_setter name =
+    let%lwt _ = get_signal name in
+    Lwt.return @@ snd @@ Hashtbl.find all_signals name
+
   let save_object (obj_type, dec, enc) data =
     let%lwt id = fresh_id () in
     let data_encoded = Protobuf.Encoder.encode_exn enc data in
     let table = Ocsipersist.open_table obj_type in
-    let%lwt () = Ocsipersist.add table id.id (id, data_encoded) in
-    Lwt.return (id, data_encoded)
+    let%lwt () = Ocsipersist.add table id.id (data_encoded, id) in
+    let%lwt setter = get_signal_setter obj_type in
+    let%lwt signal = get_signal obj_type in
+    let () = setter ((data_encoded, id) :: (S.value signal)) in
+    Lwt.return (data_encoded, id)
 
   let link_to_parent (_, a) (_, b) =
     let table = Ocsipersist.open_table "_links" in
     Ocsipersist.add table (a.id ^ "|" ^ b.id) (a.id, b.id)
 
   let get_object_of_type (obj_type, dec, enc) =
-    let table = Ocsipersist.open_table obj_type in
-    let signal, signal_setter = S.create [] in
-    let _ = 
-      let%lwt all_objects = Ocsipersist.fold_step (fun n (id, data_encoded) q ->
-      Lwt.return @@ Protobuf.Decoder.decode_exn dec data_encoded :: q) table [] in
-      Lwt.return (signal_setter all_objects)
-    in
-    signal
+    get_signal obj_type
 
     
-
   let object_is_outdated _ =
     raise Not_implemented
 

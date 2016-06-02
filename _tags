@@ -1,4 +1,4 @@
-<server/*>: package(eliom.server), package(react), package(lwt.ppx),thread
+<server/*>: package(eliom.server), package(react), package(lwt.ppx),thread,package(ppx_deriving_protobuf)
 <markdown*>: package(eliom.server),thread,package(lwt.ppx)
 <app_stub*>: package(eliom.server),thread,package(lwt.ppx)
 <widgets*>: package(eliom.server),thread,package(lwt.ppx)
@@ -8,3 +8,4 @@
 <bep/*>: package(lwt.ppx),package(sqlite3),package(sha),package(inotify.lwt),package(ppx_bitstring.ext), package(bitstring),package(lwt.ssl),for-pack(Bep), thread
 <utils/*>:for-pack(Utils), thread
 <utils/kvstore*>:package(sqlite3), thread
+<server/irc*>: package(irc-client.lwt)
