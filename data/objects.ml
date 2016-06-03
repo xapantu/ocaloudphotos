@@ -1,4 +1,5 @@
-open React
+open Lwt_react
+open Lwt
 
 
 module Object_manager = struct
@@ -13,6 +14,9 @@ module Object_manager = struct
   let value_store = Ocsipersist.open_store "object-manager"
 
   let all_signals = Hashtbl.create 50
+  let all_child_signals = Hashtbl.create 50
+
+  let links_table = Ocsipersist.open_table "_links"
 
   let fresh_id () =
     let%lwt myid = Ocsipersist.make_persistent value_store "ids" 1 in
@@ -23,7 +27,7 @@ module Object_manager = struct
                  sha = "mysha";
                  id = string_of_int current_id; }
 
-  let get (_, dec, enc) (b, _) =
+  let get (name, dec, enc) (b, _) =
     Protobuf.Decoder.decode_exn dec b
 
   let get_signal name =
@@ -33,6 +37,7 @@ module Object_manager = struct
     | Not_found ->
         let table = Ocsipersist.open_table name in
         let signal, signal_setter = S.create [] in
+        let%lwt () = Lwt_unix.sleep 0.3 in
         let _ = 
           let%lwt all_objects = Ocsipersist.fold_step (fun n obj q ->
           Lwt.return (obj :: q)) table [] in
@@ -45,10 +50,35 @@ module Object_manager = struct
     let%lwt _ = get_signal name in
     Lwt.return @@ snd @@ Hashtbl.find all_signals name
 
+  let get_child_signal obj =
+    try
+      Lwt.return @@ fst @@ Hashtbl.find all_child_signals obj
+    with
+    | Not_found ->
+        let signal, signal_setter = S.create [] in
+        let%lwt () = Lwt_unix.sleep 0.3 in
+        let _ = 
+          let%lwt all_objects = Ocsipersist.fold_step (fun n (a, b) q ->
+            if a = obj.id then
+            Lwt.return (b :: q)
+            else Lwt.return q) links_table [] in
+          Lwt.return (signal_setter all_objects)
+        in
+        (Hashtbl.add all_child_signals obj (signal, signal_setter);
+        Lwt.return signal)
+
+  let get_child_signal_setter name =
+    let%lwt _ = get_child_signal name in
+    Lwt.return @@ snd @@ Hashtbl.find all_child_signals name
+  
+
+  let (open_type_table:string -> (bytes * object_id) Ocsipersist.table) = fun name ->
+    Ocsipersist.open_table name
+
   let save_object (obj_type, dec, enc) data =
     let%lwt id = fresh_id () in
     let data_encoded = Protobuf.Encoder.encode_exn enc data in
-    let table = Ocsipersist.open_table obj_type in
+    let table = open_type_table obj_type in
     let%lwt () = Ocsipersist.add table id.id (data_encoded, id) in
     let%lwt setter = get_signal_setter obj_type in
     let%lwt signal = get_signal obj_type in
@@ -56,8 +86,11 @@ module Object_manager = struct
     Lwt.return (data_encoded, id)
 
   let link_to_parent (_, a) (_, b) =
-    let table = Ocsipersist.open_table "_links" in
-    Ocsipersist.add table (a.id ^ "|" ^ b.id) (a.id, b.id)
+    let%lwt () = Ocsipersist.add links_table (a.id ^ "|" ^ b.id) (a.id, b.id) in
+    let%lwt current_children = get_child_signal a in
+    let%lwt setter = get_child_signal_setter a in
+    return @@ setter (b.id :: S.value current_children)
+
 
   let get_object_of_type (obj_type, dec, enc) =
     get_signal obj_type
@@ -67,22 +100,11 @@ module Object_manager = struct
     raise Not_implemented
 
   let object_get_all_children (_, id)  (obj_type, dec, enc) =
-    let table = Ocsipersist.open_table "_links" in
-    let obj_table = Ocsipersist.open_table obj_type in
-    let signal, signal_setter = S.create [] in
-    let _ =
-      let%lwt all_objects = Ocsipersist.fold_step (fun n (aid, bid) q ->
-        if aid = id then
-          try
-            let%lwt myobj = Ocsipersist.find obj_table bid in
-            Lwt.return @@ myobj :: q
-          with
-          | Not_found -> Lwt.return q
-        else Lwt.return q
-      ) table []
-      in
-      Lwt.return (signal_setter all_objects)
-    in
-    signal
+    let obj_table = open_type_table obj_type in
+    get_child_signal id
+    >>= S.map_s @@ Lwt_list.map_s (fun id ->
+      let%lwt obj = Ocsipersist.find obj_table id in
+      Lwt.return obj
+    )
 
 end
