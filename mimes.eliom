@@ -6,12 +6,12 @@ module Mimes(Config:App_stub.CONFIG) = struct
   let get_all_public_services () =
     Hashtbl.find_all services "public"
 
-  let sidebar: (unit -> Html5_types.div Eliom_content.Html5.elt) list ref = ref []
+  let sidebar: (unit -> Html5_types.div Eliom_content.Html5.elt Lwt.t) list ref = ref []
 
   let register_sidebar name f =
     sidebar := f :: !sidebar
 
   let build_sidebar () =
-    List.map ((|>) ()) !sidebar
+    Lwt_list.map_s ((|>) ()) !sidebar
 
 end

@@ -1,5 +1,6 @@
 [%%shared
     open Eliom_content
+    open Lwt
 
     type div_content = Html5_types.div_content_fun Eliom_content.Html5.elt
   
@@ -31,21 +32,24 @@
 module S (M: App_stub.MIMES) = struct
   let main_box l =
     let open Html5.F in
-    Eliom_tools.F.html
+    return (Eliom_tools.F.html
       ~title:"ocaloud"
       ~css:[["css";"ocaloud.css"]]
-      (body l)
+      (body l))
 
   let main_box_sidebar l =
     let open Html5.F in
-    let sidebar = Html5.F.div ~a:[a_class ["sidebar"]]
-        (M.build_sidebar ()) in
+    let%lwt sidebar =
+      M.build_sidebar ()
+      >>= fun a ->
+      return @@ Html5.F.div ~a:[a_class ["sidebar"]] a
+    in
     let main_wrapper = Html5.F.div ~a:[a_class ["main-wrapper"]]
         l in
-    Eliom_tools.F.html
+    Lwt.return (Eliom_tools.F.html
       ~title:"ocaloud"
       ~css:[["css";"ocaloud.css"]]
-      (body ([sidebar; main_wrapper]))
+      (body ([sidebar; main_wrapper])))
 
 end
 

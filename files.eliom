@@ -12,6 +12,8 @@ module Files(E:App_stub.ENV) : App_stub.FILES with type volume = E.Data.volume =
 
   let serv_volume = Hashtbl.create 10
 
+  exception Volume_unknown_to_files of string
+
 
   let service =
     Eliom_service.App.service
@@ -19,7 +21,10 @@ module Files(E:App_stub.ENV) : App_stub.FILES with type volume = E.Data.volume =
       ~get_params: Eliom_parameter.(suffix @@ string "volume") ()
 
   let service_for_volume n =
-    Hashtbl.find serv_volume (E.Data.volume_id n)
+    try
+        Hashtbl.find serv_volume (E.Data.volume_id n)
+    with
+    | Not_found -> raise (Volume_unknown_to_files (E.Data.volume_id n))
 
   let () =
     E.Config.App.register
@@ -85,17 +90,14 @@ module Files(E:App_stub.ENV) : App_stub.FILES with type volume = E.Data.volume =
              |> Html5.R.node]
            in
            E.F.main_box_sidebar [Widgets.F.two_panes (Html5.C.node file_list) (Html5.C.node ul)]
-           |> return
          with
          | E.Data.Volume_not_found _ ->
            E.F.main_box [Html5.F.p [Html5.F.pcdata "This volume does not seem to exist."]]
-           |> Lwt.return
       )
 
   let register_service_for_volume n =
     Eliom_service.preapply ~service (E.Data.volume_id n)
     |> E.Mimes.register_public ("volume: " ^ E.Data.volume_id n)
-
 
   let on_new_volume vol =
     if public_volume vol then
@@ -119,6 +121,7 @@ module Files(E:App_stub.ENV) : App_stub.FILES with type volume = E.Data.volume =
     [filename]
 
   let _ =
+    let _ = List.map on_new_volume (React.S.value E.Data.all_volumes) in
     React.E.map on_new_volume E.Data.new_volume_loaded
 
   let () =
@@ -145,7 +148,7 @@ module Files(E:App_stub.ENV) : App_stub.FILES with type volume = E.Data.volume =
         ] |> Html5.C.node
       in
       let h:Html5_types.div_content_fun Eliom_content.Html5.F.elt = Html5.F.(h1 [pcdata "volumes"]) in
-      Html5.F.(div [h; volume_list]))
+      Lwt.return Html5.F.(div [h; volume_list]))
 
 end
 

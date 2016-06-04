@@ -54,23 +54,26 @@ module VolumeManager (Config:CONFIG) = struct
 
   let load_volume v =
     let%lwt file_list = scan_files v in
-    let%lwt intfy = Lwt_inotify.create () in
-    let%lwt watch = Lwt_inotify.add_watch intfy (volume_path v) [Inotify.(S_All)] in
-    Lwt_main.yield () >>= (fun () ->
-      while%lwt true do
+    let _ =
+        (* create a separated lwt thread, sometimes it hangs, experienced on mac os x *)
+        let%lwt intfy = Lwt_inotify.create () in
+        let%lwt watch = Lwt_inotify.add_watch intfy (volume_path v) [Inotify.(S_All)] in
         Lwt_main.yield () >>= (fun () ->
-          let%lwt ev = Lwt_inotify.read intfy in
-          let (_, kind_list, _, filename) = ev in
-          if  List.mem Inotify.Create kind_list then
-            let Some filename = filename in
-            Lwt.return (v.send_file_list (Shared.{name = filename; is_folder = false; } :: S.value v.file_list))
-          else if List.mem Inotify.Delete kind_list ||
-                  List.mem Inotify.Moved_from kind_list then
-            let%lwt file_list = scan_files v in
-            Lwt.return (v.send_file_list file_list)
-          else
-            Lwt.return ())
-      done;);
+          while%lwt true do
+            Lwt_main.yield () >>= (fun () ->
+              let%lwt ev = Lwt_inotify.read intfy in
+              let (_, kind_list, _, filename) = ev in
+              if  List.mem Inotify.Create kind_list then
+                let Some filename = filename in
+                Lwt.return (v.send_file_list (Shared.{name = filename; is_folder = false; } :: S.value v.file_list))
+              else if List.mem Inotify.Delete kind_list ||
+                      List.mem Inotify.Moved_from kind_list then
+                let%lwt file_list = scan_files v in
+                Lwt.return (v.send_file_list file_list)
+              else
+                Lwt.return ())
+          done;)
+    in
     Lwt.return (v.send_file_list file_list)
 
   let add_volume v =
@@ -105,7 +108,9 @@ module VolumeManager (Config:CONFIG) = struct
     let c = {id = "california";
              file_list = file_list;
              send_file_list = send_file_list; }
-    in add_volume c; new_photo_volume c;
+    in
+    let%lwt () = add_volume c in
+    let () = new_photo_volume c in
     let file_list, send_file_list = S.create [] in
     {id = "low";
      file_list = file_list;

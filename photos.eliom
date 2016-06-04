@@ -28,7 +28,7 @@ module Photos(Env:App_stub.ENVBASE) = struct
     image_list: image list React.signal;
   }
   
-  exception Album_does_not_exist
+  exception Album_does_not_exist of string
 
   let albums = Hashtbl.create 10
 
@@ -79,7 +79,7 @@ module Photos(Env:App_stub.ENVBASE) = struct
         image_list = image_list
       }
     with
-    | Unix.Unix_error(_) -> raise Album_does_not_exist
+    | Unix.Unix_error(_) -> raise (Album_does_not_exist(album))
 
   let main_service =
     Eliom_service.App.service ~path:["p"] ~get_params:Eliom_parameter.(suffix @@ string "album") ()
@@ -122,13 +122,13 @@ module Photos(Env:App_stub.ENVBASE) = struct
            let images_list = Eliom_react.S.Down.of_react album.image_list in
            let image_grid_view = create_display_view files_service images_list in
            let _ = resize_client_on_load () in
-           Lwt.return (Env.F.main_box_sidebar [album.description; image_grid_view])
+           Env.F.main_box_sidebar [album.description; image_grid_view]
          with
-         | Album_does_not_exist ->
-           Lwt.return (Env.F.main_box_sidebar
-                     Html5.F.(
-                       [p [pcdata "This album does not seem to exist. Please make sure the directory exists and has an index.md file."]]
-                     ))
+         | Album_does_not_exist(_) ->
+           Env.F.main_box_sidebar
+             Html5.F.(
+               [p [pcdata "This album does not seem to exist. Please make sure the directory exists and has an index.md file."]]
+             )
       )
 
   let register_service_for_album album_id =
@@ -173,7 +173,7 @@ module Photos(Env:App_stub.ENVBASE) = struct
           |> Html5.C.node
         in
 
-        div [h1 [pcdata "photos"]; list_view]
+        Lwt.return (div [h1 [pcdata "photos"]; list_view])
     end
 
 end

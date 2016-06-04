@@ -25,10 +25,6 @@ module Irc = Irc_client_lwt
 
 module IrcApp(Env:App_stub.ENVBASE) = struct
 
-  let main_service =
-    Eliom_service.App.service ~path:["i"] ~get_params:Eliom_parameter.(unit) ()
-
-
   let server = "ulminfo.fr"
   let port = 3724
   let username = "ocaloud"
@@ -40,6 +36,14 @@ module IrcApp(Env:App_stub.ENVBASE) = struct
     match b with
     | Some x -> x
     | None -> failwith "No value"
+  
+  let service =
+    Eliom_service.App.service
+      ~path: ["i"]
+      ~get_params: Eliom_parameter.(suffix @@ string "channels") ()
+  
+  let main_service =
+    Eliom_service.preapply ~service "all"
 
   let ping_server connection =
     let open Irc_message in
@@ -86,46 +90,90 @@ module IrcApp(Env:App_stub.ENVBASE) = struct
 
   let () =
     Env.Config.App.register
-      ~service:main_service
-      (fun () () ->
-         let%lwt irc_messages = Env.Data.Objects.get_object_of_type irc_message_type
-         in
-         let%lwt all_irc_channels = Env.Data.Objects.get_object_of_type irc_channel_type in
-         let%lwt all_irc_channels  =
-           all_irc_channels
-           |> Lwt_react.S.map_s @@ Lwt_list.map_s (fun channel_object ->
-             let%lwt channel_messages = Env.Data.Objects.object_get_all_children channel_object irc_message_type in
-             Lwt_react.S.map (fun msgs ->
-               channel_object, msgs) channel_messages
-             |> return
-           )
-           >>= (fun s -> s
-           |> React.S.map @@ React.S.merge (fun l s -> s :: l) []
-           |> React.S.switch
-           |> React.S.map @@ List.map (fun (l, c) -> Env.Data.Objects.get irc_channel_type l, (List.map (Env.Data.Objects.get irc_message_type)) c)
-           |> React.S.map @@ List.map (fun (l, c) -> l, List.sort (fun i j -> compare i.timestamp j.timestamp) c)
-           |> Eliom_react.S.Down.of_react
-           |> return)
-         in
-         let all_messages =
-           [%client
-              ~%all_irc_channels
-              |> React.S.map (List.map (fun (l, c) ->
-                let all_messages = 
-                  c
-                  |> List.map (fun l ->
-                    Html5.F.(li [pcdata l.content])
-                  )
-                  |> Html5.F.ul
-                in
-                Html5.F.(li [h1 [pcdata l.name]; all_messages])
-              ))
-              |> React.S.map (fun l ->
-                Html5.F.ul l)
-              |> Html5.R.node
-           ] |> Html5.C.node
-         in
-         Lwt.return (Env.F.main_box_sidebar [all_messages])
+      ~service:service
+      (fun (channel) () ->
+         if channel = "all" then
+           let%lwt irc_messages = Env.Data.Objects.get_object_of_type irc_message_type
+           in
+           let%lwt all_irc_channels = Env.Data.Objects.get_object_of_type irc_channel_type in
+           let%lwt all_irc_channels  =
+             all_irc_channels
+             |> Lwt_react.S.map_s @@ Lwt_list.map_s (fun channel_object ->
+               let%lwt channel_messages = Env.Data.Objects.object_get_all_children channel_object irc_message_type in
+               Lwt_react.S.map (fun msgs ->
+                 channel_object, msgs) channel_messages
+               |> return
+             )
+             >>= (fun s -> s
+                           |> React.S.map @@ React.S.merge (fun l s -> s :: l) []
+                           |> React.S.switch
+                           |> React.S.map @@ List.map (fun (l, c) -> Env.Data.Objects.get irc_channel_type l, (List.map (Env.Data.Objects.get irc_message_type)) c)
+                           |> React.S.map @@ List.map (fun (l, c) -> l, List.sort (fun i j -> compare i.timestamp j.timestamp) c)
+                           |> Eliom_react.S.Down.of_react
+                           |> return)
+           in
+           let all_messages =
+             [%client
+               ~%all_irc_channels
+               |> React.S.map (List.map (fun (l, c) ->
+                 let all_messages = 
+                   c
+                   |> List.map (fun l ->
+                     Html5.F.(li [pcdata l.content])
+                   )
+                   |> Html5.F.ul
+                 in
+                 Html5.F.(li [h1 [pcdata l.name]; all_messages])
+               ))
+               |> React.S.map (fun l ->
+                 Html5.F.ul l)
+               |> Html5.R.node
+             ] |> Html5.C.node
+           in
+           Env.F.main_box_sidebar [all_messages]
+         else
+           let h = Html5.F.h1 [pcdata channel] in
+           let%lwt irc_messages = Env.Data.Objects.get_object_of_type irc_message_type in
+           let irc_messages = irc_messages
+                              |> React.S.map (List.map (Env.Data.Objects.get irc_message_type))
+                              |> React.S.map (List.filter (fun s -> s.target = channel))
+                              |> Eliom_react.S.Down.of_react
+           in
+           let messages =
+             [%client
+               ~%irc_messages
+               |> React.S.map (List.map (fun l ->
+                 Html5.F.(li [pcdata l.content])
+               ))
+               |> React.S.map Html5.F.ul
+               |> Html5.R.node
+             ] |> Html5.C.node
+           in
+           Env.F.main_box_sidebar [h; messages]
       )
+  
+  let () =
+    Env.Mimes.register_sidebar "irc" (fun () ->
+
+      let%lwt all_irc_channels = Env.Data.Objects.get_object_of_type irc_channel_type in
+      let all_irc_ev =
+        all_irc_channels
+        |> React.S.map (List.map @@Env.Data.Objects.get irc_channel_type)
+        |> Eliom_react.S.Down.of_react in
+
+      let channel_list =
+        [%client
+          ~%all_irc_ev
+          |> React.S.map (fun all_chans ->
+            all_chans
+            |> List.map (fun l ->
+              let service = Eliom_service.preapply ~%service l.name in
+              Html5.F.(li [a ~service [pcdata l.name] ()]))
+            |> Widgets.F.list_view)
+          |> Html5.R.node
+        ] |> Html5.C.node
+      in
+      let h:Html5_types.div_content_fun Eliom_content.Html5.F.elt = Html5.F.(h1 [pcdata "irc"]) in
+      Lwt.return Html5.F.(div [h; channel_list]))
 
 end

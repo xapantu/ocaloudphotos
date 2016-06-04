@@ -73,8 +73,8 @@ type path_service =
 module type MIMES = sig
   val register_public : string -> unit_service-> unit
   val get_all_public_services : unit -> (string * unit_service) list
-  val register_sidebar : string -> (unit -> Html5_types.div Eliom_content.Html5.elt) -> unit
-  val build_sidebar : unit -> Html5_types.div Eliom_content.Html5.elt list
+  val register_sidebar : string -> (unit -> Html5_types.div Eliom_content.Html5.elt Lwt.t) -> unit
+  val build_sidebar : unit -> Html5_types.div Eliom_content.Html5.elt list Lwt.t
 
 end
 
@@ -83,8 +83,8 @@ module type ENV = sig
   module Data : DATA
   module Mimes : MIMES
   module F : sig
-    val main_box : (div_content list) -> Html5_types.html Eliom_content.Html5.elt
-    val main_box_sidebar : (div_content list) -> Html5_types.html Eliom_content.Html5.elt
+    val main_box : (div_content list) -> Html5_types.html Eliom_content.Html5.elt Lwt.t
+    val main_box_sidebar : (div_content list) -> Html5_types.html Eliom_content.Html5.elt Lwt.t
   end
 end
 
