@@ -4,16 +4,21 @@
     open Html5.D
     open Lwt
 
-type irc_message = {
-  content:string; [@key 1]
-  timestamp:float; [@key 2]
-  target:string; [@key 3]
-} [@@deriving protobuf]
+    type irc_target = {
+      channel:string; [@key 1]
+      server:string; [@key 2]
+    } [@@deriving protobuf]
 
-type irc_channel = {
-  name:string; [@key 1]
-  server:string; [@key 2]
-} [@@deriving protobuf]
+    type irc_message = {
+      content:string; [@key 1]
+      timestamp:float; [@key 2]
+      target:irc_target; [@key 3]
+    } [@@deriving protobuf]
+
+    type irc_channel = {
+      name:string; [@key 1]
+      server:string; [@key 2]
+    } [@@deriving protobuf]
 ]
 let irc_message_type = "irc-message", irc_message_from_protobuf, irc_message_to_protobuf
 let irc_channel_type = "irc-channel", irc_channel_from_protobuf, irc_channel_to_protobuf
@@ -45,41 +50,49 @@ module IrcApp(Env:App_stub.ENVBASE) = struct
   let main_service =
     Eliom_service.preapply ~service "all"
 
+  let%lwt all_channels = Env.Data.Objects.get_object_of_type irc_channel_type
+  
+  let get_channel name =
+    try
+      List.find (fun p -> (Env.Data.Objects.get irc_channel_type p).name = name) (React.S.value all_channels)
+      |> return
+    with
+    | Not_found -> Env.Data.Objects.save_object irc_channel_type {name; server;}
+
+  let new_message content target = 
+    {content; target; timestamp = Unix.gettimeofday () }
+  
   let ping_server connection =
     let open Irc_message in
-    let%lwt _ = Env.Data.Objects.save_object irc_message_type {content="logged in"; timestamp=Unix.gettimeofday(); target=server} in
+    let open Env.Data.Objects in
+    let save_message = save_object irc_message_type in
+    let%lwt _ = save_message (new_message ("Connected to " ^ server) {server; channel=server}) in
     let _ =
-      sleep 20.0 >>= fun () ->Irc.send_join ~connection ~channel
-    in
-    let%lwt all_channels = Env.Data.Objects.get_object_of_type irc_channel_type in
-    let get_channel name =
-      try
-        List.find (fun p -> (Env.Data.Objects.get irc_channel_type p).name = name) (React.S.value all_channels)
-        |> return
-      with
-      | Not_found -> Env.Data.Objects.save_object irc_channel_type {name; server;}
+      sleep 20.0 >>= fun () -> Irc.send_join ~connection ~channel
     in
     Irc.listen ~connection ~callback:(
       fun connection result ->
         match result with
-        | `Ok ({ command = PRIVMSG (target, msg) ; _ } as e)->
+        | `Ok ({ command = PRIVMSG (channel, msg) ; _ } as e)->
           let msg = String.trim msg in
-          let%lwt target_channel = get_channel target in
-          let%lwt msg_obj = Env.Data.Objects.save_object irc_message_type {content=msg; timestamp=Unix.gettimeofday(); target} in
-          let%lwt () = Env.Data.Objects.link_to_parent target_channel msg_obj in
-          let%lwt msg_obj = Env.Data.Objects.save_object irc_message_type {content="priv " ^ to_string e; timestamp=Unix.gettimeofday();target=server} in
+          let%lwt target_channel = get_channel channel in
+          let%lwt msg_obj = save_message (new_message msg { server; channel; }) in
+          let%lwt () = link_to_parent target_channel msg_obj in
+          let%lwt msg_obj = save_message (new_message (to_string e) { server; channel=server; }) in
           let%lwt target_channel = get_channel server in
-          let%lwt () = Env.Data.Objects.link_to_parent target_channel msg_obj in
+          let%lwt () = link_to_parent target_channel msg_obj in
           return ()
         | `Ok e ->
-          let%lwt msg_obj = Env.Data.Objects.save_object irc_message_type {content=to_string e; timestamp=Unix.gettimeofday();target=server;} in
+          let msg = new_message (to_string e) { server; channel=server; } in
+          let%lwt msg_obj = save_message msg in
           let%lwt target_channel = get_channel server in
-          let%lwt () = Env.Data.Objects.link_to_parent target_channel msg_obj in
+          let%lwt () = link_to_parent target_channel msg_obj in
           return ()
         | `Error e ->
-          let%lwt msg_obj = Env.Data.Objects.save_object irc_message_type {content=e; timestamp=Unix.gettimeofday();target="error"} in
+          let msg = new_message e { server; channel=server; } in
+          let%lwt msg_obj = save_message msg in
           let%lwt target_channel = get_channel server in
-          let%lwt () = Env.Data.Objects.link_to_parent target_channel msg_obj in
+          let%lwt () = link_to_parent target_channel msg_obj in
           return ()
     )
 
@@ -136,7 +149,7 @@ module IrcApp(Env:App_stub.ENVBASE) = struct
            let%lwt irc_messages = Env.Data.Objects.get_object_of_type irc_message_type in
            let irc_messages = irc_messages
                               |> React.S.map (List.map (Env.Data.Objects.get irc_message_type))
-                              |> React.S.map (List.filter (fun s -> s.target = channel))
+                              |> React.S.map (List.filter (fun s -> s.target.channel = channel))
                               |> Eliom_react.S.Down.of_react
            in
            let messages =

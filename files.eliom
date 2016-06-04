@@ -123,6 +123,7 @@ module Files(E:App_stub.ENV) : App_stub.FILES with type volume = E.Data.volume =
   let _ =
     let _ = List.map on_new_volume (React.S.value E.Data.all_volumes) in
     React.E.map on_new_volume E.Data.new_volume_loaded
+    |> Lwt_react.E.keep
 
   let () =
     E.Mimes.register_sidebar "volumes" (fun () ->
