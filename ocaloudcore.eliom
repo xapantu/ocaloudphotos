@@ -1,8 +1,6 @@
 [%%shared
     open Eliom_lib
     open Eliom_content
-    open Html5
-    open F
 ]
 
 open Config
@@ -34,6 +32,7 @@ module Env = struct
   module Config = Config
   module Data = Data
   module F = Widgets.S(Mimes)
+  module Form = Form.Form(Data)
 end
 
 module Files = Files(Env)
@@ -61,7 +60,7 @@ let () =
            (Eliom_tools.F.html
               ~title:"reactivenodes"
               ~css:[["css"; "reactivenodes.css"]]
-              (body [p [pcdata "ocaloud v1"]])
+              Html5.F.(body [p [pcdata "ocaloud v1"]])
            ))
 
 let () = Mimes.register_public "main" main_service

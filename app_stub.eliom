@@ -86,6 +86,14 @@ module type ENV = sig
     val main_box : (div_content list) -> Html5_types.html Eliom_content.Html5.elt Lwt.t
     val main_box_sidebar : (div_content list) -> Html5_types.html Eliom_content.Html5.elt Lwt.t
   end
+  module Form : sig
+    type 'a params_type
+    val string: string -> string -> string params_type
+    val int: string -> int -> int params_type
+    val bool: string -> bool -> bool params_type
+    val ( ** ): 'a params_type -> 'b params_type -> ('a * 'b) params_type
+    val make: 'a params_type -> ('a -> unit Lwt.t) -> div_content
+  end
 end
 
 module type FILES = sig
