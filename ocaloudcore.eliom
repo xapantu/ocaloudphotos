@@ -32,7 +32,7 @@ module Env = struct
   module Config = Config
   module Data = Data
   module F = Widgets.S(Mimes)
-  module Form = Form.Form(Data)
+  module Form = Myform.Form(Data)
 end
 
 module Files = Files(Env)
@@ -70,4 +70,5 @@ let () = Mimes.register_public "main" main_service
     open Files
     open Photos
     open Irc
+    open Myform
 ]

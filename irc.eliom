@@ -37,6 +37,7 @@ module IrcApp(Env:App_stub.ENVBASE) = struct
   let create_account_form =
     Env.Form.(make (string "Server" "" ** int "Port" 3724 ** string "username" ""))
       (fun (server, (port, username)) ->
+         Ocsigen_messages.errlog server;
          let%lwt _ = Env.Data.Objects.save_object irc_account_type
              {server; port; username; realname=username; nick=username; }
          in return ()
